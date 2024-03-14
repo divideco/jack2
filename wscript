@@ -626,6 +626,10 @@ def build_drivers(bld):
         'common/JackLoopbackDriver.cpp'
     ]
 
+    mod_desktop_src = [
+        'common/JackModDesktopDriver.cpp'
+    ]
+
     net_src = [
         'common/JackNetDriver.cpp'
     ]
@@ -731,6 +735,11 @@ def build_drivers(bld):
         bld,
         target='loopback',
         source=loopback_src)
+
+    create_driver_obj(
+        bld,
+        target='mod-desktop',
+        source=mod_desktop_src)
 
     create_driver_obj(
         bld,
