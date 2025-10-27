@@ -129,7 +129,7 @@ bool JackWinSemaphore::Disconnect()
     }
 }
 
-bool JackWinSemaphore::Allocate(const char* name, const char* server_name, int value)
+bool JackWinSemaphore::Allocate(const char* name, const char* server_name, int value, bool)
 {
     BuildName(name, server_name, fName, sizeof(fName));
     jack_log("JackWinSemaphore::Allocate name = %s val = %ld", fName, value);

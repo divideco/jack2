@@ -56,7 +56,7 @@ class JackWinSemaphore : public detail::JackSynchro
         bool Wait();
         bool TimedWait(long usec);
 
-        bool Allocate(const char* name, const char* server_name, int value);
+        bool Allocate(const char* name, const char* server_name, int value, bool internal = false);
         bool Connect(const char* name, const char* server_name);
         bool ConnectInput(const char* name, const char* server_name);
         bool ConnectOutput(const char* name, const char* server_name);
