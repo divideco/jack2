@@ -103,6 +103,17 @@ int JackPosixThread::StartImp(jack_native_thread_t* thread, int priority, int re
     struct sched_param rt_param;
     pthread_attr_init(&attributes);
     int res;
+#ifdef _DARKGLASS_DEVICE_PABLITO
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    if (realtime) {
+        for (int i = 4; i < 8; ++i)
+            CPU_SET(i, &cpuset);
+    } else {
+        for (int i = 0; i < 4; ++i)
+            CPU_SET(i, &cpuset);
+    }
+#endif
 
     if ((res = pthread_attr_setdetachstate(&attributes, PTHREAD_CREATE_JOINABLE))) {
         jack_error("Cannot request joinable thread creation for thread res = %d", res);
@@ -142,6 +153,13 @@ int JackPosixThread::StartImp(jack_native_thread_t* thread, int priority, int re
             jack_log("Cannot request explicit scheduling for non RT thread res = %d", res);
         }
     }
+
+#ifdef _DARKGLASS_DEVICE_PABLITO
+    if ((res = pthread_attr_setaffinity_np(&attributes, sizeof(cpuset), &cpuset))) {
+        jack_error("Cannot set thread affinity res = %d", res);
+        return -1;
+    }
+#endif
 
     if ((res = pthread_attr_setstacksize(&attributes, THREAD_STACK))) {
         jack_error("Cannot set thread stack size res = %d", res);
@@ -238,8 +256,19 @@ int JackPosixThread::AcquireRealTimeImp(jack_native_thread_t thread, int priorit
     int res;
     memset(&rtparam, 0, sizeof(rtparam));
     rtparam.sched_priority = priority;
+#ifdef _DARKGLASS_DEVICE_PABLITO
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    for (int i = 4; i < 8; ++i)
+        CPU_SET(i, &cpuset);
+#endif
 
     jack_log("JackPosixThread::AcquireRealTimeImp priority = %d", priority);
+
+#ifdef _DARKGLASS_DEVICE_PABLITO
+    if ((res = pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset)))
+        jack_error("Cannot set thread affinity (%d: %s)", res, strerror(res));
+#endif
 
     if ((res = pthread_setschedparam(thread, JACK_SCHED_POLICY, &rtparam)) == 0)
         return 0;
@@ -272,11 +301,23 @@ int JackPosixThread::DropRealTimeImp(jack_native_thread_t thread)
     int res;
     memset(&rtparam, 0, sizeof(rtparam));
     rtparam.sched_priority = 0;
+#ifdef _DARKGLASS_DEVICE_PABLITO
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    for (int i = 0; i < 4; ++i)
+        CPU_SET(i, &cpuset);
+#endif
 
     if ((res = pthread_setschedparam(thread, SCHED_OTHER, &rtparam)) != 0) {
         jack_error("Cannot switch to normal scheduling priority(%s)", strerror(errno));
         return -1;
     }
+
+#ifdef _DARKGLASS_DEVICE_PABLITO
+    if ((res = pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset)))
+        jack_error("Cannot set thread affinity (%d: %s)", res, strerror(res));
+#endif
+
     return 0;
 }
 
