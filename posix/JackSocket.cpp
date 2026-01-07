@@ -119,6 +119,15 @@ void JackClientSocket::SetNonBlocking(bool onoff)
         if (fcntl(fSocket, F_SETFL, flags | O_NONBLOCK) < 0) {
             jack_error("SetNonBlocking fd = %ld err = %s", fSocket, strerror(errno));
         }
+#ifdef _DARKGLASS_DEVICE_PABLITO
+        const int value = 0xfffff;
+        if (setsockopt(fSocket, SOL_SOCKET, SO_RCVBUF, &value, sizeof(value)) < 0) {
+            jack_error("SO_RCVBUF size fd = %ld err = %s", fSocket, strerror(errno));
+        }
+        if (setsockopt(fSocket, SOL_SOCKET, SO_SNDBUF, &value, sizeof(value)) < 0) {
+            jack_error("SO_SNDBUF size fd = %ld err = %s", fSocket, strerror(errno));
+        }
+#endif
     }
 }
 
