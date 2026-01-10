@@ -213,7 +213,7 @@ static void usage(FILE* file, jackctl_server_t *server, bool full = true)
             "               [ --internal-session-file OR -C internal-session-file ]\n"
             "               [ --verbose OR -v ]\n"
 #ifdef __linux__
-            "               [ --clocksource OR -c [ h(pet) | s(ystem) ]\n"
+            "               [ --clocksource OR -c [ c(ycle) | h(pet) | s(ystem) ]\n"
 #endif
             "               [ --autoconnect OR -a <modechar>]\n");
 
@@ -358,11 +358,7 @@ int main(int argc, char** argv)
                         value.ui = JACK_TIMER_HPET;
                         jackctl_parameter_set_value(param, &value);
                     } else if (tolower (optarg[0]) == 'c') {
-                        /* For backwards compatibility with scripts, allow
-                         * the user to request the cycle clock on the
-                         * command line, but use the system clock instead
-                         */
-                        value.ui = JACK_TIMER_SYSTEM_CLOCK;
+                        value.ui = JACK_TIMER_CYCLE_COUNTER;
                         jackctl_parameter_set_value(param, &value);
                     } else if (tolower (optarg[0]) == 's') {
                         value.ui = JACK_TIMER_SYSTEM_CLOCK;

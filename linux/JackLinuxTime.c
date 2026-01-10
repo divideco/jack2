@@ -59,6 +59,34 @@ static uint64_t hpet_wrap;
 static hpet_counter_t hpet_previous = 0;
 #endif /* defined(__gnu_linux__) && (__i386__ || __x86_64__) */
 
+#if defined(__ARM_ARCH_8A) && !defined(_MOD_DEVICE_DUOX)
+static uint64_t _cntfrq_mhz = 0;
+static void _cntfrq_mhz_init() {
+	asm volatile("mrs %0, CNTFRQ_EL0" : "=r"(_cntfrq_mhz));
+	_cntfrq_mhz /= 1000000;
+};
+#endif
+
+static jack_time_t jack_get_microseconds_from_cycles (void)
+{
+#if defined(_MOD_DEVICE_DUO)
+	uint32_t r;
+	asm volatile("mrc p15, 0, %0, c9, c13, 0\t\n" : "=r"(r));
+	return (((uint64_t)r) << 6) / 912; // 912 is the hardcoded MOD Duo CPU frequency
+#elif defined(_MOD_DEVICE_DUOX)
+	uint64_t r;
+	asm volatile("mrs %0, CNTVCT_EL0" : "=r"(r));
+	return r * 0.12;
+#elif defined(__ARM_ARCH_8A)
+	uint64_t r;
+	asm volatile("mrs %0, CNTVCT_EL0" : "=r"(r));
+	return r / _cntfrq_mhz;
+#else
+	#warning Cycle counter implementation missing
+	return 0;
+#endif
+}
+
 #ifdef HPET_SUPPORT
 
 static int jack_hpet_init ()
@@ -172,6 +200,13 @@ void SetClockSource(jack_timer_type_t source)
 
 	switch (source)
 	{
+        case JACK_TIMER_CYCLE_COUNTER:
+#if defined(__ARM_ARCH_8A) && !defined(_MOD_DEVICE_DUOX)
+            _cntfrq_mhz_init();
+#endif
+            _jack_get_microseconds = jack_get_microseconds_from_cycles;
+            break;
+
         case JACK_TIMER_HPET:
             if (jack_hpet_init () == 0) {
                 _jack_get_microseconds = jack_get_microseconds_from_hpet;
@@ -190,6 +225,8 @@ void SetClockSource(jack_timer_type_t source)
 const char* ClockSourceName(jack_timer_type_t source)
 {
 	switch (source) {
+        case JACK_TIMER_CYCLE_COUNTER:
+            return "cycle counter";
         case JACK_TIMER_HPET:
             return "hpet";
         case JACK_TIMER_SYSTEM_CLOCK:
