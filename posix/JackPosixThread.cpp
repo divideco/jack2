@@ -103,7 +103,7 @@ int JackPosixThread::StartImp(jack_native_thread_t* thread, int priority, int re
     struct sched_param rt_param;
     pthread_attr_init(&attributes);
     int res;
-#ifdef _DARKGLASS_DEVICE_PABLITO
+#ifdef _MOD_DEVICE_RK358x
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     if (realtime) {
@@ -154,7 +154,7 @@ int JackPosixThread::StartImp(jack_native_thread_t* thread, int priority, int re
         }
     }
 
-#ifdef _DARKGLASS_DEVICE_PABLITO
+#ifdef _MOD_DEVICE_RK358x
     if ((res = pthread_attr_setaffinity_np(&attributes, sizeof(cpuset), &cpuset))) {
         jack_error("Cannot set thread affinity res = %d", res);
         return -1;
@@ -256,7 +256,7 @@ int JackPosixThread::AcquireRealTimeImp(jack_native_thread_t thread, int priorit
     int res;
     memset(&rtparam, 0, sizeof(rtparam));
     rtparam.sched_priority = priority;
-#ifdef _DARKGLASS_DEVICE_PABLITO
+#ifdef _MOD_DEVICE_RK358x
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     for (int i = 4; i < 8; ++i)
@@ -265,7 +265,7 @@ int JackPosixThread::AcquireRealTimeImp(jack_native_thread_t thread, int priorit
 
     jack_log("JackPosixThread::AcquireRealTimeImp priority = %d", priority);
 
-#ifdef _DARKGLASS_DEVICE_PABLITO
+#ifdef _MOD_DEVICE_RK358x
     if ((res = pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset)))
         jack_error("Cannot set thread affinity (%d: %s)", res, strerror(res));
 #endif
@@ -301,7 +301,7 @@ int JackPosixThread::DropRealTimeImp(jack_native_thread_t thread)
     int res;
     memset(&rtparam, 0, sizeof(rtparam));
     rtparam.sched_priority = 0;
-#ifdef _DARKGLASS_DEVICE_PABLITO
+#ifdef _MOD_DEVICE_RK358x
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
     for (int i = 0; i < 4; ++i)
@@ -313,7 +313,7 @@ int JackPosixThread::DropRealTimeImp(jack_native_thread_t thread)
         return -1;
     }
 
-#ifdef _DARKGLASS_DEVICE_PABLITO
+#ifdef _MOD_DEVICE_RK358x
     if ((res = pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset)))
         jack_error("Cannot set thread affinity (%d: %s)", res, strerror(res));
 #endif
