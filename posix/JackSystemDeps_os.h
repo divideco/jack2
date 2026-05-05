@@ -20,10 +20,21 @@
 #ifndef __JackSystemDeps_POSIX__
 #define __JackSystemDeps_POSIX__
 
+#if defined(__linux__) && !defined(__cplusplus)
+#define _GNU_SOURCE 1
+#define __USE_GNU 1
+#include <stdbool.h>
+#endif
+
 #include <inttypes.h>
 #include <sys/types.h>
 #include <signal.h>
 #include <dlfcn.h>
+#ifdef __linux__
+#include <stdio.h>
+#include <sys/mman.h>
+#include "JackError.h"
+#endif
 
 #ifndef UINT32_MAX 
 #define UINT32_MAX 4294967295U
@@ -35,9 +46,77 @@
 #define GetDriverProc(handle, name) dlsym((handle), (name))
 
 #define JACK_HANDLE void*
-#define LoadJackModule(name) dlopen((name), RTLD_NOW | RTLD_LOCAL);
 #define UnloadJackModule(handle) dlclose((handle));
 #define GetJackProc(handle, name) dlsym((handle), (name));
+
+#ifdef __linux__
+static inline void* LoadJackModule(const char* name)
+{
+    FILE* const module_file = fopen(name, "rb");
+    if (module_file == NULL) {
+        jack_error("Failed to open jack module file %s", name);
+        return NULL;
+    }
+
+    fseek(module_file, 0, SEEK_END);
+    const long size = ftell(module_file);
+    fseek(module_file, 0, SEEK_SET);
+
+    do {
+        const int shm_fd = memfd_create(name, MFD_CLOEXEC);
+        if (shm_fd < 0) {
+            jack_error("Failed to create memory file for %s", name);
+            break;
+        }
+
+        if (ftruncate(shm_fd, size) < 0) {
+            jack_error("Failed to truncate memory file for %s", name);
+            close(shm_fd);
+            break;
+        }
+
+        char buf[8192];
+        bool ok = false;
+        for (long i = 0; i < size;)
+        {
+            const int r = fread(buf, 1, 8192, module_file);
+            if (r == 0) {
+                ok = true;
+                break;
+            }
+            const int w = write(shm_fd, buf, r);
+            if (r != w) {
+                jack_error("Failed to write memory file for %s", name);
+                break;
+            }
+        }
+
+        if (! ok)
+            break;
+
+        snprintf(buf, 8192, "/proc/%d/fd/%d", getpid(), shm_fd);
+
+        void* const handle = dlopen(buf, RTLD_NOW | RTLD_LOCAL);
+        close(shm_fd);
+
+        if (handle == NULL) {
+            jack_error("Failed to load memory file for %s", name);
+            break;
+        }
+
+        fclose(module_file);
+
+        return handle;
+
+    } while (false);
+
+    fclose(module_file);
+
+    return dlopen(name, RTLD_NOW | RTLD_LOCAL);
+}
+#else
+#define LoadJackModule(name) dlopen((name), RTLD_NOW | RTLD_LOCAL);
+#endif
 
 #define JACK_DEBUG (getenv("JACK_CLIENT_DEBUG") && strcmp(getenv("JACK_CLIENT_DEBUG"), "on") == 0)
 
